@@ -1,0 +1,8 @@
+anaconda_config_version: 1
+upstream_sources:
+  # Upstream has no release tags; track the established CF snapshot versions.
+  - webpage:
+      url: https://api.anaconda.org/package/conda-forge/asmjit
+      regex: '"version":\s*"([^"]+)"'
+    packages:
+      - asmjit
