@@ -1,0 +1,67 @@
+{% set name = "asmjit" %}
+{% set version = "0.0.0.2026.03.26" %}
+{% set commit = "0bd5787b54b575ed94bf32ac452153b34385c514" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/asmjit/{{ name }}/archive/{{ commit }}.tar.gz
+  sha256: 8d642612b05d0fd932beee8bdb8c9559c675cb4d2db2946b9636a1fef32b3fb9
+
+build:
+  number: 0
+  # Date-stamped snapshots have no stable ABI promise; require the same snapshot.
+  run_exports:
+    - {{ pin_subpackage(name, max_pin="x.x.x.x.x.x") }}
+  script:
+    - cmake -S . -B build -G Ninja ${CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_INSTALL_LIBDIR=lib -DASMJIT_STATIC=OFF -DASMJIT_TEST=OFF  # [unix]
+    - cmake -S . -B build -G Ninja %CMAKE_ARGS% -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%" -DCMAKE_INSTALL_LIBDIR=lib -DASMJIT_STATIC=OFF -DASMJIT_TEST=OFF  # [win]
+    - cmake --build build --config Release
+    - cmake --install build --config Release
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ stdlib('c') }}
+    - cmake >=3.24
+    - ninja-base
+
+test:
+  files:
+    - test/CMakeLists.txt
+    - test/test.cpp
+  requires:
+    - {{ compiler('cxx') }}
+    - {{ stdlib('c') }}
+    - cmake >=3.24
+    - ninja-base
+  commands:
+    - test -f "$PREFIX/include/asmjit/asmjit.h"  # [unix]
+    - test -f "$PREFIX/lib/libasmjit${SHLIB_EXT}"  # [unix]
+    - if not exist "%LIBRARY_INC%\asmjit\asmjit.h" exit 1  # [win]
+    - if not exist "%LIBRARY_BIN%\asmjit.dll" exit 1  # [win]
+    - if not exist "%LIBRARY_LIB%\asmjit.lib" exit 1  # [win]
+    # Upstream installs a CMake target, not a pkg-config file.
+    - cmake -S test -B test-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PREFIX"  # [unix]
+    - cmake -S test -B test-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="%LIBRARY_PREFIX%"  # [win]
+    - cmake --build test-build --config Release
+    - ./test-build/asmjit-smoke  # [unix]
+    - test-build\asmjit-smoke.exe  # [win]
+
+about:
+  home: https://asmjit.com
+  dev_url: https://github.com/asmjit/asmjit
+  doc_url: https://asmjit.com/doc/index.html
+  summary: Low-latency machine code generation
+  description: |
+    AsmJit is a lightweight C++ library for generating machine code at runtime,
+    with x86, x64, and AArch64 assembler and compiler backends.
+  license: Zlib
+  license_family: Other
+  license_file: LICENSE.md
+
+extra:
+  recipe-maintainers:
+    - kklein
